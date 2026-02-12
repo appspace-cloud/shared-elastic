@@ -1,0 +1,16 @@
+# Helm packages
+*.tgz
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
