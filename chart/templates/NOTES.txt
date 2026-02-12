@@ -1,0 +1,63 @@
+################################################################################
+#                                                                              #
+#  Elasticsearch Cluster Deployed Successfully!                                #
+#                                                                              #
+################################################################################
+
+Your Elasticsearch cluster "{{ .Values.appspace.elastic.name }}" has been deployed in namespace "{{ .Release.Namespace }}".
+
+1. Get the status of your Elasticsearch cluster:
+
+   kubectl get elasticsearch -n {{ .Release.Namespace }}
+
+2. Check the health of your cluster:
+
+   kubectl get elasticsearch {{ .Values.appspace.elastic.name }} -n {{ .Release.Namespace }} -o jsonpath='{.status.health}'
+
+3. Get the list of Elasticsearch pods:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l elasticsearch.k8s.elastic.co/cluster-name={{ .Values.appspace.elastic.name }}
+
+4. Get the Elasticsearch service endpoint:
+
+   kubectl get service {{ .Values.appspace.elastic.name }}-es-http -n {{ .Release.Namespace }}
+
+5. Retrieve the elastic user password:
+
+   kubectl get secret {{ .Values.appspace.elastic.name }}-es-elastic-user -n {{ .Release.Namespace }} -o jsonpath='{.data.elastic}' | base64 --decode; echo
+
+6. Port-forward to access Elasticsearch locally:
+
+   kubectl port-forward -n {{ .Release.Namespace }} service/{{ .Values.appspace.elastic.name }}-es-http 9200:9200
+
+   Then access: https://localhost:9200
+   Username: elastic
+   Password: (from step 5)
+
+7. Access Elasticsearch from within the cluster:
+
+   URL: https://{{ .Values.appspace.elastic.name }}-es-http.{{ .Release.Namespace }}.svc.cluster.local:9200
+
+8. View logs from a specific node:
+
+   kubectl logs -n {{ .Release.Namespace }} <pod-name> -f
+
+9. To check cluster details:
+
+   kubectl describe elasticsearch {{ .Values.appspace.elastic.name }} -n {{ .Release.Namespace }}
+
+################################################################################
+# Important Notes:                                                             #
+################################################################################
+
+- This deployment uses the Elastic Cloud on Kubernetes (ECK) operator
+- Ensure the ECK operator is installed before deploying this chart
+- TLS is enabled by default for secure communication
+- Default credentials are stored in Kubernetes secrets
+- Monitor your cluster resources and adjust as needed
+
+For more information, visit:
+- ECK Documentation: https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html
+- Chart Repository: https://github.com/appspace-cloud/shared-elastic
+
+################################################################################

@@ -1,0 +1,23 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Values.appspace.elastic.name | default "shared-elastic" | quote }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "shared-elastic.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  version: {{ .Values.appspace.elastic.version | default "8.15.1" | quote }}
+  {{- include "elastic.podDisruptionBudget" . | nindent 2 }}
+  {{- include "elastic.nodeSets" . | nindent 2 }}
+  {{- include "elastic.secureSettings" . | nindent 2 }}
+  {{- include "elastic.http" . | nindent 2 }}
+  {{- include "elastic.transport" . | nindent 2 }}
+  {{- include "elastic.monitoring" . | nindent 2 }}
+  {{- include "elastic.updateStrategy" . | nindent 2 }}

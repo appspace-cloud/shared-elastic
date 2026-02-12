@@ -1,0 +1,210 @@
+# Default values for shared-elastic Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Elasticsearch configuration
+appspace:
+  elastic:
+    # Name of the Elasticsearch cluster
+    name: "shared-elastic"
+    
+    # Elasticsearch version to deploy
+    version: "8.15.1"
+    
+    # Pod Disruption Budget configuration
+    podDisruptionBudget:
+      enabled: true
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            elasticsearch.k8s.elastic.co/cluster-name: "shared-elastic"
+    
+    # Node sets configuration
+    nodeSets:
+      # Master nodes - responsible for cluster coordination
+      - name: master
+        count: 3
+        config:
+          node.roles: ["master"]
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: master
+          spec:
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "2Gi"
+                    cpu: "1000m"
+                  limits:
+                    memory: "2Gi"
+                    cpu: "2000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms1g -Xmx1g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
+              storageClassName: standard
+      
+      # Data nodes - responsible for storing and searching data
+      - name: data
+        count: 3
+        config:
+          node.roles: ["data", "ingest"]
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: data
+          spec:
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "4Gi"
+                    cpu: "2000m"
+                  limits:
+                    memory: "4Gi"
+                    cpu: "4000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms2g -Xmx2g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 100Gi
+              storageClassName: standard
+      
+      # Coordinating nodes - responsible for routing requests
+      - name: coordinating
+        count: 2
+        config:
+          node.roles: []
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: coordinating
+          spec:
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "2Gi"
+                    cpu: "1000m"
+                  limits:
+                    memory: "2Gi"
+                    cpu: "2000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms1g -Xmx1g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
+              storageClassName: standard
+    
+    # Secure settings from Kubernetes secrets
+    secureSettings:
+      enabled: false
+      # secretName: "elasticsearch-secure-settings"
+      # entries:
+      #   - secretName: "s3-credentials"
+      #     key: "access_key"
+      #     path: "s3.client.default.access_key"
+      #   - secretName: "s3-credentials"
+      #     key: "secret_key"
+      #     path: "s3.client.default.secret_key"
+    
+    # HTTP configuration
+    http:
+      tls:
+        # Enable/disable TLS for HTTP
+        enabled: true
+        # Reference to a Kubernetes secret containing TLS certificate
+        # certificate:
+        #   secretName: "elasticsearch-http-certs"
+      service:
+        metadata:
+          labels:
+            service-type: elasticsearch
+        spec:
+          type: LoadBalancer
+          # External traffic policy
+          # externalTrafficPolicy: Local
+    
+    # Transport configuration (node-to-node communication)
+    transport:
+      tls:
+        enabled: true
+        # Reference to a Kubernetes secret containing TLS certificate
+        # certificate:
+        #   secretName: "elasticsearch-transport-certs"
+    
+    # Monitoring configuration
+    monitoring:
+      enabled: false
+      # metrics:
+      #   elasticsearchRefs:
+      #     - name: monitoring-cluster
+      #       namespace: monitoring
+      # logs:
+      #   elasticsearchRefs:
+      #     - name: monitoring-cluster
+      #       namespace: monitoring
+    
+    # Update strategy
+    updateStrategy:
+      changeBudget:
+        maxSurge: 1
+        maxUnavailable: 1
+
+# Additional annotations for the Elasticsearch resource
+annotations: {}
+
+# Additional labels for the Elasticsearch resource
+labels: {}
