@@ -1,0 +1,20 @@
+apiVersion: v2
+name: shared-elastic
+description: A Helm chart for deploying Elasticsearch using Elastic Cloud on Kubernetes (ECK) operator
+type: application
+version: 1.0.0
+appVersion: "8.15.1"
+keywords:
+  - elasticsearch
+  - elastic
+  - eck
+  - search
+  - analytics
+home: https://github.com/appspace-cloud/shared-elastic
+sources:
+  - https://github.com/appspace-cloud/shared-elastic
+maintainers:
+  - name: AppSpace Cloud Team
+    email: team@appspace.cloud
+dependencies: []
+icon: https://static-www.elastic.co/v3/assets/bltefdd0b53724fa2ce/blt4466841eed0bf232/5d082a34616162aa5a85707c/logo-elastic-elasticsearch-lt.svg

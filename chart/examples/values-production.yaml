@@ -1,0 +1,206 @@
+# Production Environment Configuration
+# High-availability cluster with dedicated node types
+
+appspace:
+  elastic:
+    name: "prod-elastic"
+    version: "8.15.1"
+    
+    # Enable PDB for high availability
+    podDisruptionBudget:
+      enabled: true
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            elasticsearch.k8s.elastic.co/cluster-name: "prod-elastic"
+    
+    nodeSets:
+      # Master nodes for cluster coordination
+      - name: master
+        count: 3
+        config:
+          node.roles: ["master"]
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: master
+              environment: production
+          spec:
+            affinity:
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      labelSelector:
+                        matchLabels:
+                          elasticsearch.k8s.elastic.co/cluster-name: "prod-elastic"
+                          role: master
+                      topologyKey: kubernetes.io/hostname
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "4Gi"
+                    cpu: "2000m"
+                  limits:
+                    memory: "4Gi"
+                    cpu: "4000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms2g -Xmx2g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+              storageClassName: fast-ssd
+      
+      # Data nodes for storage and search
+      - name: data
+        count: 5
+        config:
+          node.roles: ["data", "ingest"]
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: data
+              environment: production
+          spec:
+            affinity:
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      labelSelector:
+                        matchLabels:
+                          elasticsearch.k8s.elastic.co/cluster-name: "prod-elastic"
+                          role: data
+                      topologyKey: kubernetes.io/hostname
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "8Gi"
+                    cpu: "4000m"
+                  limits:
+                    memory: "8Gi"
+                    cpu: "8000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms4g -Xmx4g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 500Gi
+              storageClassName: standard
+      
+      # Coordinating nodes for request routing
+      - name: coordinating
+        count: 3
+        config:
+          node.roles: []
+          xpack.security.enabled: true
+          xpack.security.transport.ssl.enabled: true
+          xpack.security.http.ssl.enabled: true
+        podTemplate:
+          metadata:
+            labels:
+              role: coordinating
+              environment: production
+          spec:
+            affinity:
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      labelSelector:
+                        matchLabels:
+                          elasticsearch.k8s.elastic.co/cluster-name: "prod-elastic"
+                          role: coordinating
+                      topologyKey: kubernetes.io/hostname
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    memory: "4Gi"
+                    cpu: "2000m"
+                  limits:
+                    memory: "4Gi"
+                    cpu: "4000m"
+                env:
+                  - name: ES_JAVA_OPTS
+                    value: "-Xms2g -Xmx2g"
+            initContainers:
+              - name: sysctl
+                securityContext:
+                  privileged: true
+                  runAsUser: 0
+                command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+              storageClassName: fast-ssd
+    
+    # LoadBalancer for external access
+    http:
+      tls:
+        enabled: true
+      service:
+        metadata:
+          labels:
+            environment: production
+        spec:
+          type: LoadBalancer
+          externalTrafficPolicy: Local
+    
+    # Enable monitoring
+    monitoring:
+      enabled: true
+      metrics:
+        elasticsearchRefs:
+          - name: monitoring-cluster
+            namespace: monitoring
+      logs:
+        elasticsearchRefs:
+          - name: monitoring-cluster
+            namespace: monitoring
+    
+    # Update strategy
+    updateStrategy:
+      changeBudget:
+        maxSurge: 1
+        maxUnavailable: 0
